@@ -2,8 +2,7 @@
 
 This repo contains the evaluation scripts for the multi-human parsing task in the MHP-V2 dataset (https://lv-mhp.github.io/)
 
-Contents:
-
+## Contents:
 mhp_data.py: This script generates a list of data, and also visualizes the dataset
 
 eval_mhp.py: This script evaluates the predictios. It generates a set of perfect predictions with the ground truth, and evluates the perfect predictions. To evaluate your algorithm, replace the results['MASKS'] and results['DETS'] with the output of your algorithm.
