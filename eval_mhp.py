@@ -19,6 +19,13 @@ def cal_one_mean_iou(image_array, label_array, NUM_CLASSES):
     iu = num_cor_pix / (num_gt_pix + hist.sum(0) - num_cor_pix)
     return iu
 
+def decode_ann(an_add):
+    mask_gt = np.array(Image.open(an_add))
+    if len(mask_gt.shape)==3: 
+        mask_gt = mask_gt[:,:,0] # Make sure ann is a two dimensional np array.     
+
+    return mask_gt
+
 def get_gt(list_dat, task_id=None):
     if task_id is not None:
         cached = pickle.load(open('cache/gt_record_{}.pkl'.format(task_id)))
@@ -37,9 +44,8 @@ def get_gt(list_dat, task_id=None):
         else:
             gt_box = []
             anno_adds = []
-            for bbox in dat['bboxes']:
-                mask_gt = np.array(Image.open(bbox['ann_path']))
-                if len(mask_gt.shape)==3: mask_gt = mask_gt[:,:,0] # Make sure ann is a two dimensional np array. 
+            for bbox in dat['bboxes']:                
+                mask_gt = decode_ann(bbox['ann_path'])
                 if np.sum(mask_gt>0)==0: continue
                 anno_adds.append(bbox['ann_path'])
                 gt_box.append((bbox['x1'], bbox['y1'], bbox['x2'], bbox['y2']))
@@ -109,8 +115,7 @@ def eval_seg_ap(results_all, dat_list, nb_class=59, ovthresh_seg=0.5, Sparse=Fal
             mask_pred = mask0.astype(np.int)
 
         for i in xrange(len(R['anno_adds'])):
-            mask_gt = np.array(Image.open(R['anno_adds'][i]))
-            if len(mask_gt.shape)==3: mask_gt = mask_gt[:,:,0] # Make sure ann is a two dimensional np array. 
+            mask_gt = decode_ann(R['anno_adds'][i])
 
             seg_iou= cal_one_mean_iou(mask_pred.astype(np.uint8), mask_gt, nb_class)
 
@@ -163,8 +168,7 @@ def get_prediction_from_gt(dat_list, NUM_CLASSES, cache_pkl=False, cache_pkl_pat
 
         dets, masks = [], []
         for bbox in dat['bboxes']:
-            mask_gt = np.array(Image.open(bbox['ann_path']))
-            if len(mask_gt.shape)==3: mask_gt = mask_gt[:,:,0] # Make sure ann is a two dimensional np array. 
+            mask_gt = decode_ann(bbox['ann_path'])
             if np.sum(mask_gt)==0: continue
             ys, xs = np.where(mask_gt>0)
             x1, y1, x2, y2 = xs.min(), ys.min(), xs.max(), ys.max()
@@ -198,7 +202,7 @@ if __name__ == '__main__':
     import mhp_data
     data_root = '/home/lijianshu/MultiPerson/data/LV-MHP-v2/'
     # set_ in ['train', 'val', 'test_all', 'test_inter_top20', 'test_inter_top10'])
-    set_ = 'val'
+    set_ = 'test_inter_top20'
     dat_list = mhp_data.get_data(data_root, set_)
     #dat_list = pickle.load(open('cache/dat_list_val.pkl'))
     

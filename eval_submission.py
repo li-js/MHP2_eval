@@ -5,23 +5,23 @@ import cv2
 import os, sys
 import argparse
 
-parser = argparse.ArgumentParser(description='Eval MHP')
+parser = argparse.ArgumentParser(description='Eval MHP-v2')
 
-parser.add_argument('--plot', dest='plot', default=False, help='Whether to plot the resultse')
-
+parser.add_argument('--plot', dest='plot', default=False, help='Whether to plot the results')
+parser.add_argument('--sparse', dest='sparse', default=False, help='Use sparse matrix to save memory footprint')
+parser.add_argument('--cache_pkl', dest='cache_pkl', default=False, help='Cache results to save memory footprint')
 
 args = parser.parse_args()
 
-Sparse = False
-cache_pkl = False
-PLOT = args.plot
-data_root = '/home/lijianshu/MultiPerson/data/LV-MHP-v2/'
+data_root = '/home/lijianshu/MultiPerson/data/LV-MHP-v2/'   # Path to your MHP-V2 dataset
+cache_pkl_path = './tmp'                                    # Path to the cached_pkl
+
+if args.cache_pkl and (not os.path.isdir(cache_pkl_path)):
+    os.makedirs(cache_pkl_path)
 
 #set_list = ['test_all', 'test_inter_top20', 'test_inter_top10']
 set_list = ['val']
-cache_pkl_path = './tmp'
 skip_header = 0
-
 
 meta_results = {}
 for f in open('results.txt').readlines()[skip_header:]:
@@ -41,8 +41,8 @@ results_all = {}
 for key in tqdm(meta_results, desc='Generating results ..'):
     persons = meta_results[key]
 
-    global_seg = cv2.imread('global_seg/{}.png'.format(key), cv2.IMREAD_UNCHANGED)
-    global_tag = cv2.imread('global_tag/{}.png'.format(key), cv2.IMREAD_UNCHANGED)
+    global_seg = cv2.imread('global_seg/{}.png'.format(key), cv2.IMREAD_UNCHANGED) # make sure this is a 2d np array
+    global_tag = cv2.imread('global_tag/{}.png'.format(key), cv2.IMREAD_UNCHANGED) # make sure this is a 2d np array
 
     results = {} 
     dets, masks = [], []
@@ -58,18 +58,18 @@ for key in tqdm(meta_results, desc='Generating results ..'):
 
     # Reuiqred Field of each result: a list of masks, each is a multi-class masks for one person.
         # It can also be sparsified to [scipy.sparse.csr_matrix(mask) for mask in masks] to save memory cost
-    results['MASKS']= masks if not Sparse else [scipy.sparse.csr_matrix(mask) for mask in masks]
+    results['MASKS']= masks if not args.sparse else [scipy.sparse.csr_matrix(mask) for mask in masks]
     # Reuiqred Field of each result, a list of detections corresponding to results['MASKS']. 
     results['DETS'] = dets    
 
-    if cache_pkl:
+    if args.cache_pkl:
         results_cache_add = cache_pkl_path + key + '.pklz'
         pickle.dump(results, gzip.open(results_cache_add, 'w'))
         results_all[key] = results_cache_add
     else:
         results_all[key]=results
 
-    if PLOT:
+    if args.plot:
         import pylab as plt
         plt.figure('seg')
         plt.imshow(global_seg)
@@ -94,7 +94,7 @@ for set_ in set_list:
 
     final_results[set_]['ap_list'], final_results[set_]['pcp_list'] = [], []
     for thres in [float(i)/10 for i in range(1,10)]:
-        ap_seg, pcp = eval_mhp.eval_seg_ap(results_all_i, dat_list, nb_class=59, ovthresh_seg=thres, task_id=set_, Sparse=False, From_pkl=False)
+        ap_seg, pcp = eval_mhp.eval_seg_ap(results_all_i, dat_list, nb_class=59, ovthresh_seg=thres, task_id=set_, Sparse=args.sparse, From_pkl=args.cache_pkl)
         final_results[set_]['ap_list'].append(ap_seg)
         final_results[set_]['pcp_list'].append(pcp)
 
